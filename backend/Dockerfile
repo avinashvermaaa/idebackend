@@ -61,15 +61,8 @@ RUN npm install
 # Install Go dependencies (if needed, for example if you have a `go.mod` file)
 # RUN go mod tidy
 
-# Expose MySQL and app ports (3306 for MySQL, 5000 for app)
-EXPOSE 3306 5000
+# Expose port for the app (5000 is common for Node.js apps)
+EXPOSE 5000
 
-# Initialize MySQL database (optional: you could add your own schema/init.sql if needed)
-RUN service mysql start && \
-    mysql -e "CREATE DATABASE IF NOT EXISTS myapp_db;" && \
-    mysql -e "CREATE USER 'root'@'%' IDENTIFIED BY 'root';" && \
-    mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%';" && \
-    mysql -e "FLUSH PRIVILEGES;"
-
-# Command to run MySQL and Node.js server together
-CMD service mysql start && node server.js
+# Command to run the Node.js server
+CMD ["node", "server.js"]
