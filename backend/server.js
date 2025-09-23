@@ -6,6 +6,7 @@ const path = require("path");
 require("dotenv").config(); // Load .env variables
 const { OpenAI } = require("openai"); // ✅ Correct import
 const { Configuration, OpenAIApi } = require("openai");
+const mysql = require("mysql2"); // Import mysql2 package
 
 // OpenAI Setup
 const openai = new OpenAI({
@@ -20,6 +21,17 @@ app.use(express.json());
 
 const TEMP_DIR = path.join(__dirname, "temp");
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR);
+
+// Create MySQL connection pool
+const db = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'localhost',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || 'root',
+  database: process.env.MYSQL_DATABASE || 'myapp_db',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 const languageConfigs = {
   cpp: {
@@ -162,7 +174,19 @@ app.post("/compile", async (req, res) => {
 
     // Special handling for SQL languages
     if (["sql", "postgresql", "mysql"].includes(language)) {
-      // For SQL, we might want to create sample data or handle specific SQL commands
+      // For SQL, execute the code directly on MySQL
+      if (language === "mysql") {
+        console.log("🚀 Executing MySQL Query...");
+        db.query(code, (err, results) => {
+          if (err) {
+            console.error("❌ MySQL Execution Error:", err.message);
+            return res.status(500).json({ output: err.message });
+          }
+          res.json({ output: JSON.stringify(results) });
+        });
+        return; // Exit the function early after handling MySQL
+      }
+
       if (language === "sql") {
         // SQLite specific setup - add some sample data if needed
         const setupCmd = `echo "CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT);" | sqlite3 ${path.join(TEMP_DIR, "temp.db")}`;
